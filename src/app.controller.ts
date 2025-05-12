@@ -14,7 +14,7 @@ export class AppController {
   };
 
   @Get('/')
-  async getHello(): Promise<string> {
+  getHello(): string {
     return 'Hello World';
   }
 

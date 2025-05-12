@@ -37,7 +37,6 @@ export class AppService {
       });
 
     this.logger.debug('CSRF token response:', response.data);
-    // this.logger.debug('CSRF Headers:', response.headers['set-cookie']);
     return { ...response.data, session: response.headers['set-cookie'] } as FetchCSRFTokenResponse;
   }
 
