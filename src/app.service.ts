@@ -3,26 +3,88 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AxiosError } from 'axios';
 
+/**
+ * Service responsible for handling Superset authentication and guest token generation.
+ *
+ * This service manages the multi-step authentication flow with Apache Superset:
+ * 1. Obtain an access token using admin credentials
+ * 2. Fetch a CSRF token using the access token
+ * 3. Generate row-level security (RLS) rules based on user attributes
+ * 4. Request a guest token with the appropriate permissions
+ */
 @Injectable()
 export class AppService {
+  /** Configuration object containing Superset connection details */
   private readonly supersetConfig: SUPERSET_CONFIG | undefined;
+
+  /** Logger instance for debugging and error tracking */
   private readonly logger = new Logger(AppService.name);
 
   constructor(
     private readonly configService: ConfigService,
     private readonly httpService: HttpService,
   ) {
+    // Load Superset configuration from environment variables
     this.supersetConfig = this.configService.get<SUPERSET_CONFIG>('superset');
   }
 
+  /**
+   * Orchestrates the complete guest token generation process.
+   *
+   * This method performs the following steps:
+   * 1. Fetches an access token from Superset
+   * 2. Retrieves a CSRF token using the access token
+   * 3. Generates RLS rules based on user attributes
+   * 4. Requests a guest token with the dashboard permissions
+   *
+   * @param {User} user - The user object containing authentication details
+   * @returns {Promise<string>} The generated guest token
+   * @throws {Error} If any step in the authentication flow fails
+   *
+   * @example
+   * const token = await appService.getGuestToken({
+   *   username: 'john.doe',
+   *   user_type: 'USER',
+   *   organisation_id: 123,
+   *   locations: '1|||2|||3'
+   * });
+   */
   async getGuestToken(user: User): Promise<string> {
+    // Step 1: Get access token using admin credentials
     const { access_token } = await this.fetchAccessToken();
+
+    // Step 2: Get CSRF token for security
     const { result: csrf_token, session } = await this.fetchCSRFToken(access_token);
+
+    // Step 3: Generate RLS rules based on user permissions
     const rls = this.getRLS(user);
-    const data = await this.fetchGuestToken(access_token, csrf_token, session, '30ddf642-4c36-40ee-ade2-fc77e6285a6c', rls, user);
+
+    // Step 4: Get guest token with all required parameters
+    // Note: Dashboard ID is hardcoded - should be configurable in production
+    const data = await this.fetchGuestToken(
+      access_token,
+      csrf_token,
+      session,
+      '30ddf642-4c36-40ee-ade2-fc77e6285a6c', // TODO: Make this configurable
+      rls,
+      user,
+    );
+
     return data.token;
   }
 
+  /**
+   * Fetches a CSRF token from Superset.
+   *
+   * CSRF tokens are required for state-changing operations in Superset
+   * to prevent cross-site request forgery attacks.
+   *
+   * @param {string} access_token - Valid access token from Superset
+   * @returns {Promise<FetchCSRFTokenResponse>} Object containing CSRF token and session cookie
+   * @throws {AxiosError} If the request to Superset fails
+   *
+   * @private
+   */
   async fetchCSRFToken(access_token: string): Promise<FetchCSRFTokenResponse> {
     const response = await this.httpService.axiosRef
       .get(`${this.supersetConfig?.url}/api/v1/security/csrf_token`, {
@@ -37,9 +99,25 @@ export class AppService {
       });
 
     this.logger.debug('CSRF token response:', response.data);
-    return { ...response.data, session: response.headers['set-cookie'] } as FetchCSRFTokenResponse;
+
+    // Return both the CSRF token and session cookie
+    return {
+      ...response.data,
+      session: response.headers['set-cookie'],
+    } as FetchCSRFTokenResponse;
   }
 
+  /**
+   * Authenticates with Superset using admin credentials.
+   *
+   * This method performs a login operation to obtain an access token
+   * that will be used for subsequent API calls to Superset.
+   *
+   * @returns {Promise<FetchAccessTokenResponse>} Object containing access and refresh tokens
+   * @throws {AxiosError} If authentication fails or network error occurs
+   *
+   * @private
+   */
   async fetchAccessToken(): Promise<FetchAccessTokenResponse> {
     const response = await this.httpService.axiosRef
       .post(
@@ -47,8 +125,8 @@ export class AppService {
         {
           username: this.supersetConfig?.username,
           password: this.supersetConfig?.password,
-          provider: 'db',
-          refresh: true,
+          provider: 'db', // Database authentication provider
+          refresh: true, // Request a refresh token
         },
         {
           headers: {
@@ -65,6 +143,23 @@ export class AppService {
     return response.data as FetchAccessTokenResponse;
   }
 
+  /**
+   * Requests a guest token from Superset with specific dashboard permissions.
+   *
+   * Guest tokens allow embedding Superset dashboards in external applications
+   * while maintaining security through row-level security rules.
+   *
+   * @param {string} access_token - Valid access token
+   * @param {string} csrf_token - CSRF token for request validation
+   * @param {string} session - Session cookie from CSRF token request
+   * @param {string} dashboard_id - UUID of the dashboard to embed
+   * @param {RLS} rls - Row-level security rules to apply
+   * @param {User} user - User information to embed in the token
+   * @returns {Promise<FetchGuestTokenResponse>} Object containing the guest token
+   * @throws {AxiosError} If the request fails
+   *
+   * @private
+   */
   async fetchGuestToken(access_token: string, csrf_token: string, session: string, dashboard_id: string, rls: RLS, user: User): Promise<FetchGuestTokenResponse> {
     const response = await this.httpService.axiosRef
       .post(
@@ -76,8 +171,8 @@ export class AppService {
               id: dashboard_id,
             },
           ],
-          rls,
-          user,
+          rls, // Row-level security rules
+          user, // User context for the token
         },
         {
           headers: {
@@ -97,19 +192,46 @@ export class AppService {
     return response.data as FetchGuestTokenResponse;
   }
 
+  /**
+   * Generates row-level security (RLS) rules based on user attributes.
+   *
+   * RLS rules are SQL WHERE clauses that Superset applies to queries
+   * to filter data based on user permissions. This ensures users only
+   * see data they are authorized to access.
+   *
+   * @param {User} user - User object containing organization and location data
+   * @returns {RLS} Array of SQL clause objects for row-level security
+   *
+   * @example
+   * // For an admin user
+   * getRLS(adminUser) // Returns: []
+   *
+   * // For a regular user
+   * getRLS(regularUser) // Returns: [
+   *   { clause: "organisation_id IN (123)" },
+   *   { clause: "practice_location_id IN (1,2,3)" }
+   * ]
+   */
   getRLS(user: User): RLS {
+    // Convert pipe-separated locations string to array of numbers
     const decodedUser: DecodedUser = {
       ...user,
       locations: user.locations.split('|||').map((location) => parseInt(location, 10)),
     };
 
-    return [
+    // Build RLS rules based on user type and attributes
+    const rules = [
       {
+        // Organization filter: Only applied for non-ADMIN users
         clause: `organisation_id IN (${user.user_type !== 'ADMIN' ? decodedUser.organisation_id : ''})`,
       },
       {
+        // Location filter: Applied for all users
         clause: `practice_location_id IN (${decodedUser.locations.join(',')})`,
       },
-    ].filter((clause) => clause.clause !== 'organisation_id IN ()' && clause.clause !== 'practice_location_id IN ()');
+    ];
+
+    // Filter out empty clauses (e.g., admin organization clause)
+    return rules.filter((clause) => clause.clause !== 'organisation_id IN ()' && clause.clause !== 'practice_location_id IN ()');
   }
 }

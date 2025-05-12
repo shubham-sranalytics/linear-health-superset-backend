@@ -1,98 +1,229 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Superset Guest Token Service Documentation
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+## Overview
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+This NestJS application provides a service for generating guest tokens from Apache Superset. Guest tokens are used to embed Superset dashboards in external applications with row-level security (RLS) rules applied based on user permissions.
 
-## Description
+## Architecture
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+The application follows a standard NestJS architecture with:
+- **Controller** (`app.controller.ts`): Handles HTTP requests
+- **Service** (`app.service.ts`): Contains business logic for token generation
+- **Configuration**: Uses NestJS ConfigService for managing Superset connection details
 
-## Project setup
+## API Endpoints
 
-```bash
-$ npm install
+### GET /
+Returns a simple "Hello World" message to verify the service is running.
+
+**Response:**
+```
+Hello World
 ```
 
-## Compile and run the project
+### POST /
+Generates a guest token for embedding Superset dashboards.
 
-```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+**Response:**
+```json
+{
+  "status": "success",
+  "token": "eyJ0eXAiOiJKV1QiLCJhbGciOi..."
+}
 ```
 
-## Run tests
-
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+**Error Response:**
+```json
+{
+  "status": "failure",
+  "error": "Error message details"
+}
 ```
 
-## Deployment
+## How It Works
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+The guest token generation process involves multiple steps:
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### 1. Authentication Flow
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+![Superset token generate](./flow-of-generate-token.png)
+
+### 2. User Object Structure
+
+The application uses a hardcoded user object in the controller:
+
+```typescript
+{
+  username: 'admin',
+  first_name: 'Admin',
+  last_name: 'User',
+  user_type: 'ADMIN',
+  organisation_id: 1,
+  locations: '1|||2'  // Pipe-separated location IDs
+}
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### 3. Row-Level Security (RLS)
 
-## Resources
+The service applies RLS rules based on user attributes:
 
-Check out a few resources that may come in handy when working with NestJS:
+- **Organization filtering**: Applied for non-ADMIN users
+- **Location filtering**: Applied based on user's assigned locations
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+The RLS rules are generated as SQL clauses:
+```sql
+organisation_id IN (1)
+practice_location_id IN (1,2)
+```
 
-## Support
+## Configuration
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+The service requires the following environment variables for Superset connection:
 
-## Stay in touch
+```typescript
+interface SUPERSET_CONFIG {
+  url: string;        // Superset base URL
+  username: string;   // Superset admin username
+  password: string;   // Superset admin password
+}
+```
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+## Type Definitions
 
-## License
+### TokenResponse
+```typescript
+interface TokenResponse {
+  status: 'success' | 'failure';
+  token?: string;
+  error?: string;
+}
+```
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+### User
+```typescript
+interface User {
+  username: string;
+  first_name: string;
+  last_name: string;
+  user_type: string;
+  organisation_id: number;
+  locations: string;  // Pipe-separated location IDs
+}
+```
+
+### DecodedUser
+```typescript
+interface DecodedUser extends Omit<User, 'locations'> {
+  locations: number[];  // Parsed location IDs
+}
+```
+
+### RLS (Row-Level Security)
+```typescript
+type RLS = Array<{
+  clause: string;
+}>;
+```
+
+## Error Handling
+
+The service includes error handling at each step:
+- Logs errors using NestJS Logger
+- Returns structured error responses
+- Preserves error context for debugging
+
+## Security Considerations
+
+1. **Hardcoded User**: The current implementation uses a hardcoded admin user. In production, this should be replaced with actual user authentication.
+
+2. **Dashboard ID**: The dashboard ID is hardcoded (`30ddf642-4c36-40ee-ade2-fc77e6285a6c`). This should be configurable or passed as a parameter.
+
+3. **Credentials**: Ensure Superset credentials are stored securely using environment variables or a secrets management system.
+
+## Usage Example
+
+To use this service in a frontend application:
+
+```javascript
+// Fetch guest token
+const response = await fetch('http://your-service-url/', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
+const data = await response.json();
+
+if (data.status === 'success') {
+  // Use the token to embed Superset dashboard
+  const dashboardUrl = `${SUPERSET_URL}/superset/dashboard/${DASHBOARD_ID}/?guest_token=${data.token}`;
+  
+  // Embed in iframe
+  document.getElementById('dashboard-iframe').src = dashboardUrl;
+}
+```
+
+## Development Setup
+
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+2. Configure environment variables for Superset connection
+
+3. Run in development mode:
+   ```bash
+   npm run start:dev
+   ```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **CSRF Token Errors**: Ensure cookies are properly handled in the session
+2. **Authentication Failures**: Verify Superset credentials and URL
+3. **RLS Not Applied**: Check that the RLS clauses match your Superset dataset columns
+
+### Debug Mode
+
+Enable debug logging by setting the log level in your NestJS configuration:
+```typescript
+Logger.setLogLevel(['debug']);
+```
+
+## API Response Types
+
+### FetchAccessTokenResponse
+Contains the access token from Superset login:
+```typescript
+interface FetchAccessTokenResponse {
+  access_token: string;
+  refresh_token?: string;
+}
+```
+
+### FetchCSRFTokenResponse
+Contains CSRF token and session cookie:
+```typescript
+interface FetchCSRFTokenResponse {
+  result: string;  // CSRF token
+  session: string; // Session cookie
+}
+```
+
+### FetchGuestTokenResponse
+Contains the final guest token:
+```typescript
+interface FetchGuestTokenResponse {
+  token: string;
+}
+```
+
+## Dependencies
+
+- **@nestjs/core**: Core NestJS framework
+- **@nestjs/axios**: HTTP client for API calls
+- **@nestjs/config**: Configuration management
+- **axios**: HTTP client library

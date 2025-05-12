@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { createServer, proxy } from 'aws-serverless-express';
+import { createServer } from 'aws-serverless-express';
 import { Server } from 'http';
 
 let cachedServer: Server;

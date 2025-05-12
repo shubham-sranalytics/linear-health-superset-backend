@@ -18,8 +18,13 @@ type FetchGuestTokenResponse = {
   token: string;
 };
 
+/**
+ * Row-Level Security rule types
+ */
 type RLS = RLSClause[];
+
 type RLSClause = {
+  /** SQL WHERE clause for data filtering */
   clause: string;
 };
 
