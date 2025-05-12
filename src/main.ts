@@ -8,6 +8,7 @@ let cachedServer: Server;
 async function bootstrapServer(): Promise<Server> {
   if (!cachedServer) {
     const app = await NestFactory.create(AppModule);
+    app.enableCors();
     await app.init();
     cachedServer = createServer(app.getHttpAdapter().getInstance());
   }
