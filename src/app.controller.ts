@@ -1,4 +1,4 @@
-import { Controller, Post } from '@nestjs/common';
+import { Controller, Get, Post } from '@nestjs/common';
 import { AppService } from './app.service';
 
 @Controller()
@@ -12,6 +12,11 @@ export class AppController {
     organisation_id: 1,
     locations: '1|||2',
   };
+
+  @Get('/')
+  async getHello(): Promise<string> {
+    return 'Hello World';
+  }
 
   @Post('/')
   async getGuestToken(): Promise<TokenResponse> {
