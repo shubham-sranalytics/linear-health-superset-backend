@@ -46,7 +46,7 @@ The guest token generation process involves multiple steps:
 
 ### 1. Authentication Flow
 
-![Superset token generate](./flow-of-generate-token.png)
+![Superset token generate](flow-of-generate-token.png)
 
 ### 2. User Object Structure
 
