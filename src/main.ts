@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { Server } from 'http';
 import { createServer, proxy } from 'aws-serverless-express';
+import { Server } from 'http';
 
 let cachedServer: Server;
 
@@ -14,7 +14,7 @@ async function bootstrapServer(): Promise<Server> {
   return cachedServer;
 }
 
-export const handler = async (event, context) => {
+export default async function handler(req, res) {
   const server = await bootstrapServer();
-  return proxy(server, event, context, 'PROMISE').promise;
-};
+  return server.emit('request', req, res);
+}
