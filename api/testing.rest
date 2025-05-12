@@ -1,0 +1,2 @@
+### Get all users
+POST http://localhost:8080
