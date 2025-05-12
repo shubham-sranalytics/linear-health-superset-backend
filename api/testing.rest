@@ -1,2 +1,2 @@
 ### Get all users
-POST https://superset-backend.vercel.app/
+POST https://linear-health-superset-backend.vercel.app/
