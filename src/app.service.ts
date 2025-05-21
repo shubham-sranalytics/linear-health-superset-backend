@@ -209,7 +209,7 @@ export class AppService {
    * // For a regular user
    * getRLS(regularUser) // Returns: [
    *   { clause: "organisation_id IN (123)" },
-   *   { clause: "practice_location_id IN (1,2,3)" }
+   *   { clause: "practice_location_id IN (1,2,3)", dataset: '31' }
    * ]
    */
   getRLS(user: User): RLS {
