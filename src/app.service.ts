@@ -218,6 +218,7 @@ export class AppService {
 
   getDashboardId(name: TReqName): string {
     if (name === 'messaging') return '6fab7c77-4dd7-4471-97ca-b62af012b3a4';
+    else if (name === 'messaging-error') return '6fab7c77-4dd7-4471-97ca-b62af012b3a4';
     else if (name === 'assessment') return '1449667a-8a39-4862-a79c-bb40117bcd6d';
     else if (name === 'assessment-error') return '1449667a-8a39-4862-a79c-bb40117bcd6d';
     else if (name === 'task') return '07761b1b-bf0d-47fb-9416-e25ee85e2bd4';
