@@ -26,6 +26,7 @@ type RLS = RLSClause[];
 type RLSClause = {
   /** SQL WHERE clause for data filtering */
   clause: string;
+  [key: string]: string;
 };
 
 type User = {
@@ -39,3 +40,5 @@ type User = {
 };
 
 type DecodedUser = Pick<User, 'organisation_id'> & { locations: number[] };
+
+type TReqName = 'default' | 'messaging' | 'messaging-error' | 'assessment' | 'assessment-error' | 'task' | 'error';

@@ -1,4 +1,4 @@
-import { Controller, Get, Post } from '@nestjs/common';
+import { Controller, Get, Param, Post } from '@nestjs/common';
 import { AppService } from './app.service';
 
 /**
@@ -72,11 +72,12 @@ export class AppController {
    *
    * @throws {Error} When Superset authentication fails or network errors occur
    */
-  @Post('/')
-  async getGuestToken(): Promise<TokenResponse> {
+  @Post(['/', '/:name'])
+  async getGuestToken(@Param('name') name: TReqName = 'default'): Promise<TokenResponse> {
     try {
-      // Call the service to generate a guest token using the hardcoded user
-      const token = await this.appService.getGuestToken(this.user);
+      if (!['default', 'messaging', 'messaging-error', 'assessment', 'assessment-error', 'task', 'error'].includes(name)) throw new Error(`404 not found token for ${name}`);
+
+      const token = await this.appService.getGuestToken(this.user, name);
       return { status: 'success', token };
     } catch (error) {
       // Return a structured error response

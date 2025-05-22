@@ -49,7 +49,7 @@ export class AppService {
    *   locations: '1|||2|||3'
    * });
    */
-  async getGuestToken(user: User): Promise<string> {
+  async getGuestToken(user: User, name: TReqName): Promise<string> {
     // Step 1: Get access token using admin credentials
     const { access_token } = await this.fetchAccessToken();
 
@@ -57,18 +57,12 @@ export class AppService {
     const { result: csrf_token, session } = await this.fetchCSRFToken(access_token);
 
     // Step 3: Generate RLS rules based on user permissions
-    const rls = this.getRLS(user);
+    const rls = this.getRLS(name);
+    const dashboardId = this.getDashboardId(name);
 
     // Step 4: Get guest token with all required parameters
     // Note: Dashboard ID is hardcoded - should be configurable in production
-    const data = await this.fetchGuestToken(
-      access_token,
-      csrf_token,
-      session,
-      '30ddf642-4c36-40ee-ade2-fc77e6285a6c', // TODO: Make this configurable
-      rls,
-      user,
-    );
+    const data = await this.fetchGuestToken(access_token, csrf_token, session, dashboardId, rls, user);
 
     return data.token;
   }
@@ -212,26 +206,21 @@ export class AppService {
    *   { clause: "practice_location_id IN (1,2,3)", dataset: '31' }
    * ]
    */
-  getRLS(user: User): RLS {
-    // Convert pipe-separated locations string to array of numbers
-    const decodedUser: DecodedUser = {
-      ...user,
-      locations: user.locations.split('|||').map((location) => parseInt(location, 10)),
-    };
+  getRLS(name: TReqName): RLS {
+    if (name === 'default') return [{ clause: 'practice_location_id IN (1,2)' }];
+    else if (name === 'messaging') return [{ clause: 'patient_case_id IN (1,2,3,4,5,6)' }];
+    else if (name === 'messaging-error') return [{ clause: 'practice_location_id IN (1,2)' }, { clause: 'organisation_id IN (1)' }];
+    else if (name === 'assessment') return [{ clause: 'practice_location_id IN (1,2)' }];
+    else if (name === 'assessment-error') return [{ clause: 'practice_location_id IN (1,2)' }, { clause: 'organisation_id IN (1)' }];
+    else if (name === 'task') return [{ clause: 'practice_location_id IN (1,2)' }, { clause: 'organisation_id IN (1)' }];
+    else return [];
+  }
 
-    // Build RLS rules based on user type and attributes
-    const rules = [
-      {
-        // Organization filter: Only applied for non-ADMIN users
-        clause: `organisation_id IN (${user.user_type !== 'ADMIN' ? decodedUser.organisation_id : ''})`,
-      },
-      {
-        // Location filter: Applied for all users
-        clause: `practice_location_id IN (${decodedUser.locations.join(',')})`,
-      },
-    ];
-
-    // Filter out empty clauses (e.g., admin organization clause)
-    return rules.filter((clause) => clause.clause !== 'organisation_id IN ()' && clause.clause !== 'practice_location_id IN ()');
+  getDashboardId(name: TReqName): string {
+    if (name === 'messaging') return '6fab7c77-4dd7-4471-97ca-b62af012b3a4';
+    else if (name === 'assessment') return '1449667a-8a39-4862-a79c-bb40117bcd6d';
+    else if (name === 'assessment-error') return '1449667a-8a39-4862-a79c-bb40117bcd6d';
+    else if (name === 'task') return '07761b1b-bf0d-47fb-9416-e25ee85e2bd4';
+    else return '30ddf642-4c36-40ee-ade2-fc77e6285a6c';
   }
 }
