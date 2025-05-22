@@ -207,7 +207,7 @@ export class AppService {
    * ]
    */
   getRLS(name: TReqName): RLS {
-    if (name === 'default') return [{ clause: 'practice_location_id IN (1,2)' }];
+    if (name === 'default') return [{ clause: 'organisation_id IN (1,2)' }];
     else if (name === 'messaging') return [{ clause: 'patient_case_id IN (1,2,3,4,5,6)' }];
     else if (name === 'messaging-error') return [{ clause: 'practice_location_id IN (1,2)' }, { clause: 'organisation_id IN (1)' }];
     else if (name === 'assessment') return [{ clause: 'practice_location_id IN (1,2)' }];
