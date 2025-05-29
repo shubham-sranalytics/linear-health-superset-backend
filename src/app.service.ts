@@ -57,7 +57,7 @@ export class AppService {
     const { result: csrf_token, session } = await this.fetchCSRFToken(access_token);
 
     // Step 3: Generate RLS rules based on user permissions
-    const rls = this.getRLS(name);
+    const rls = this.getRLS();
     const dashboardId = this.getDashboardId(name);
 
     // Step 4: Get guest token with all required parameters
@@ -186,42 +186,17 @@ export class AppService {
     return response.data as FetchGuestTokenResponse;
   }
 
-  /**
-   * Generates row-level security (RLS) rules based on user attributes.
-   *
-   * RLS rules are SQL WHERE clauses that Superset applies to queries
-   * to filter data based on user permissions. This ensures users only
-   * see data they are authorized to access.
-   *
-   * @param {User} user - User object containing organization and location data
-   * @returns {RLS} Array of SQL clause objects for row-level security
-   *
-   * @example
-   * // For an admin user
-   * getRLS(adminUser) // Returns: []
-   *
-   * // For a regular user
-   * getRLS(regularUser) // Returns: [
-   *   { clause: "organisation_id IN (123)" },
-   *   { clause: "practice_location_id IN (1,2,3)", dataset: '31' }
-   * ]
-   */
-  getRLS(name: TReqName): RLS {
-    if (name === 'default') return [{ clause: 'organisation_id IN (1,2)' }];
-    else if (name === 'messaging') return [{ clause: 'patient_case_id IN (1,2,3,4,5,6)' }];
-    else if (name === 'messaging-error') return [{ clause: 'practice_location_id IN (1,2)' }, { clause: 'organisation_id IN (1)' }];
-    else if (name === 'assessment') return [{ clause: 'practice_location_id IN (1,2)' }];
-    else if (name === 'assessment-error') return [{ clause: 'practice_location_id IN (1,2)' }, { clause: 'organisation_id IN (1)' }];
-    else if (name === 'task') return [{ clause: 'practice_location_id IN (1,2)' }, { clause: 'organisation_id IN (1)' }];
-    else return [];
+  getRLS(): RLS {
+    return [{ clause: 'practice_location_id IN (1,2)' }, { clause: 'organisation_id IN (1)' }];
   }
 
   getDashboardId(name: TReqName): string {
-    if (name === 'messaging') return '6fab7c77-4dd7-4471-97ca-b62af012b3a4';
-    else if (name === 'messaging-error') return '6fab7c77-4dd7-4471-97ca-b62af012b3a4';
-    else if (name === 'assessment') return '1449667a-8a39-4862-a79c-bb40117bcd6d';
-    else if (name === 'assessment-error') return '1449667a-8a39-4862-a79c-bb40117bcd6d';
-    else if (name === 'task') return '07761b1b-bf0d-47fb-9416-e25ee85e2bd4';
-    else return '30ddf642-4c36-40ee-ade2-fc77e6285a6c';
+    if (name === 'task')
+      return '07761b1b-bf0d-47fb-9416-e25ee85e2bd4'; // task dashboard
+    else if (name === 'assessment')
+      return '1449667a-8a39-4862-a79c-bb40117bcd6d'; // assessment dashboard
+    else if (name === 'messaging')
+      return '6fab7c77-4dd7-4471-97ca-b62af012b3a4'; // messaging dashboard
+    else return 'bfe106ab-3219-4664-969c-2f2f96fd377a'; // referral dashboard
   }
 }
