@@ -3,6 +3,13 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AxiosError } from 'axios';
 
+const SUPERSET_DASHBOARDS = new Map<string, string>([
+  ['task', '8105582e-9347-4769-ab9e-38b42518a46e'],
+  ['assessment', 'bdff233a-f748-410a-a5ac-95fe4ac346ff'],
+  ['messaging', '8b52934e-4b88-40ae-9285-9499136369fc'],
+  ['referral', '3e81aa97-e600-4aaa-a245-444fea0f266c'],
+]);
+
 /**
  * Service responsible for handling Superset authentication and guest token generation.
  *
@@ -57,8 +64,8 @@ export class AppService {
     const { result: csrf_token, session } = await this.fetchCSRFToken(access_token);
 
     // Step 3: Generate RLS rules based on user permissions
-    const rls = this.getRLS();
-    const dashboardId = this.getDashboardId(name);
+    const rls = this.getRLS;
+    const dashboardId = SUPERSET_DASHBOARDS.get(name)!;
 
     // Step 4: Get guest token with all required parameters
     // Note: Dashboard ID is hardcoded - should be configurable in production
@@ -81,7 +88,7 @@ export class AppService {
    */
   async fetchCSRFToken(access_token: string): Promise<FetchCSRFTokenResponse> {
     const response = await this.httpService.axiosRef
-      .get(`${this.supersetConfig?.url}/api/v1/security/csrf_token`, {
+      .get(`${this.supersetConfig?.url}/api/v1/security/csrf_token/`, {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${access_token}`,
@@ -157,7 +164,7 @@ export class AppService {
   async fetchGuestToken(access_token: string, csrf_token: string, session: string, dashboard_id: string, rls: RLS, user: User): Promise<FetchGuestTokenResponse> {
     const response = await this.httpService.axiosRef
       .post(
-        `${this.supersetConfig?.url}/api/v1/security/guest_token`,
+        `${this.supersetConfig?.url}/api/v1/security/guest_token/`,
         {
           resources: [
             {
@@ -186,17 +193,7 @@ export class AppService {
     return response.data as FetchGuestTokenResponse;
   }
 
-  getRLS(): RLS {
+  get getRLS(): RLS {
     return [{ clause: 'practice_location_id IN (1,2)' }, { clause: 'organisation_id IN (1)' }];
-  }
-
-  getDashboardId(name: TReqName): string {
-    if (name === 'task')
-      return '07761b1b-bf0d-47fb-9416-e25ee85e2bd4'; // task dashboard
-    else if (name === 'assessment')
-      return '1449667a-8a39-4862-a79c-bb40117bcd6d'; // assessment dashboard
-    else if (name === 'messaging')
-      return '6fab7c77-4dd7-4471-97ca-b62af012b3a4'; // messaging dashboard
-    else return 'bfe106ab-3219-4664-969c-2f2f96fd377a'; // referral dashboard
   }
 }
