@@ -7,7 +7,7 @@ const SUPERSET_DASHBOARDS = new Map<string, string>([
   ['task', '8105582e-9347-4769-ab9e-38b42518a46e'],
   ['assessment', 'bdff233a-f748-410a-a5ac-95fe4ac346ff'],
   ['messaging', '8b52934e-4b88-40ae-9285-9499136369fc'],
-  ['referral', '3e81aa97-e600-4aaa-a245-444fea0f266c'],
+  ['default', '3e81aa97-e600-4aaa-a245-444fea0f266c'],
 ]);
 
 /**
