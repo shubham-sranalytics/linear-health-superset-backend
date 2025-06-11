@@ -194,6 +194,7 @@ export class AppService {
   }
 
   get getRLS(): RLS {
-    return [{ clause: 'practice_location_id IN (1,2)' }, { clause: 'organisation_id IN (1)' }];
+    return []
+    // return [{ clause: 'practice_location_id IN (1,2)' }, { clause: 'organisation_id IN (1)' }];
   }
 }
